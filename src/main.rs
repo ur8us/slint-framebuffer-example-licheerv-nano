@@ -51,10 +51,10 @@ impl Platform for FramebufferPlatform {
                 renderer.render(pixels, self.stride);
             });
 
-            // handle touch event
+            // // handle touch event
 
-            self.window
-                .dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+            // self.window
+            //     .dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
 
             if !self.window.has_active_animations() {
                 std::thread::sleep(
@@ -87,11 +87,11 @@ fn main() -> Result<(), slint::PlatformError> {
 
     let mut fb = Framebuffer::new(fb_path).expect("open framebuffer");
 
-    let ly = fb.get_pixel_layout();
-    println!("ly: {:?}", ly); // returns ABGR, need RGBA
+    // let ly = fb.get_pixel_layout();
+    // println!("ly: {:?}", ly); // returns ABGR, need RGBA
 
-    let bytes_pp = fb.get_bytes_per_pixel();
-    println!("bytes_pp: {}", bytes_pp);
+    // let bytes_pp = fb.get_bytes_per_pixel();
+    // println!("bytes_pp: {}", bytes_pp);
 
     // _ = fb.set_bytes_per_pixel(2);
 

@@ -25,6 +25,8 @@ cargo run --release
 The run-on-target.sh script will be started, uploading the executable file to the target board and running it. Make sure that this sh file contains the actual IP address of the board.
 
 
+![](photo-lcd.jpeg)
+
 
 # Old README.md from https://github.com/nilclass/slint-framebuffer-example is below
 
