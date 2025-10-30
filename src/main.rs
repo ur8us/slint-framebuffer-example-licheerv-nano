@@ -1,17 +1,15 @@
-use linuxfb::{Framebuffer, set_terminal_mode, TerminalMode};
+use linuxfb::{set_terminal_mode, Framebuffer, TerminalMode};
+use slint::{
+    platform::{
+        software_renderer::{
+            MinimalSoftwareWindow, PremultipliedRgbaColor, RepaintBufferType, /*Rgb565Pixel,*/
+        },
+        Platform, WindowEvent,
+    },
+    PhysicalSize,
+};
 use std::rc::Rc;
 use std::time::Duration;
-use slint::{
-    PhysicalSize,
-    platform::{
-        Platform,
-        software_renderer::{
-            MinimalSoftwareWindow,
-            Rgb565Pixel,
-            RepaintBufferType,
-        },
-    },
-};
 
 slint::include_modules!();
 
@@ -35,7 +33,9 @@ impl FramebufferPlatform {
 }
 
 impl Platform for FramebufferPlatform {
-    fn create_window_adapter(&self) -> Result<Rc<dyn slint::platform::WindowAdapter>, slint::PlatformError> {
+    fn create_window_adapter(
+        &self,
+    ) -> Result<Rc<dyn slint::platform::WindowAdapter>, slint::PlatformError> {
         Ok(self.window.clone())
     }
 
@@ -45,12 +45,22 @@ impl Platform for FramebufferPlatform {
 
             self.window.draw_if_needed(|renderer| {
                 let mut frame = self.fb.map().unwrap();
-                let (_, pixels, _) = unsafe { frame.align_to_mut::<Rgb565Pixel>() };
+                let (_, pixels, _) = unsafe {
+                    frame.align_to_mut::</*Rgb565Pixel*/PremultipliedRgbaColor>()
+                };
                 renderer.render(pixels, self.stride);
             });
 
+            // handle touch event
+
+            self.window
+                .dispatch_event(WindowEvent::KeyPressed { text: " ".into() });
+
             if !self.window.has_active_animations() {
-                std::thread::sleep(slint::platform::duration_until_next_timer_update().unwrap_or(Duration::from_secs(1)));
+                std::thread::sleep(
+                    slint::platform::duration_until_next_timer_update()
+                        .unwrap_or(Duration::from_secs(1)),
+                );
             }
         }
     }
@@ -65,26 +75,33 @@ fn main() -> Result<(), slint::PlatformError> {
     // Path to the framebuffer device. Normally this is fb0.
     // I'm using a `fbtft` based display on the RaspberryPi, which shows up
     // as fb1 (fb0 is raspi's builtin graphics card).
-    let fb_path = "/dev/fb1";
+    let fb_path = "/dev/fb0";
 
     // Switch back to text mode when terminating
     ctrlc::set_handler(move || {
         let tty = std::fs::File::open(tty_path).unwrap();
         set_terminal_mode(&tty, TerminalMode::Text).expect("switch to text mode");
         std::process::exit(1);
-    }).expect("install signal handlers");
+    })
+    .expect("install signal handlers");
+
+    let mut fb = Framebuffer::new(fb_path).expect("open framebuffer");
+
+    let ly = fb.get_pixel_layout();
+    println!("ly: {:?}", ly); // returns ABGR, need RGBA
+
+    let bytes_pp = fb.get_bytes_per_pixel();
+    println!("bytes_pp: {}", bytes_pp);
+
+    // _ = fb.set_bytes_per_pixel(2);
 
     // Instruct slint to use the FramebufferPlatform
-    slint::platform::set_platform(Box::new(
-        FramebufferPlatform::new(
-            Framebuffer::new(fb_path).expect("open framebuffer")
-        )
-    )).expect("set platform");
+    slint::platform::set_platform(Box::new(FramebufferPlatform::new(fb))).expect("set platform");
 
     // Switch terminal to graphics mode
-    let tty = std::fs::File::open(tty_path).expect("open TTY");
-    set_terminal_mode(&tty, TerminalMode::Graphics).expect("switch to graphics mode");
-    drop(tty);
+    // let tty = std::fs::File::open(tty_path).expect("open TTY");
+    // set_terminal_mode(&tty, TerminalMode::Graphics).expect("switch to graphics mode");
+    // drop(tty);
 
     let ui = AppWindow::new()?;
 

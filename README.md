@@ -1,35 +1,32 @@
-# Slint framebuffer example
 
-⚠️⚠️⚠️
+# Slint framebuffer example running on LicheeRV Nano development board 
 
-This example is very rudimentary. It may not work with all framebuffer drivers (in fact, with most it won't, because it uses 16-bit pixels, assuming the driver will understand).
-Use at your own risk, and be ready to reboot if your screen is frozen 🙈
+Thiis is a demo of compiling and running a Slint UI program on a Risc-V 64-bit microprocessor under Linux, using Linux framebuffer.
 
-⚠️⚠️⚠️
+## Hardware
 
-## What is this?
+LicheeRV Nano - https://wiki.sipeed.com/hardware/en/lichee/RV_Nano/1_intro.html
+IPS 2.28 inch 31-pin ST7701S-based display, resolution is 368*552
 
-This example contains a very simple slint [Platform](https://docs.rs/slint/latest/slint/platform/trait.Platform.html) implementation, that renders to a Linux framebuffer device.
+## Prepare the target
 
-Slint is a UI library written in Rust. Learn more about it at https://slint.dev
+Flash the SD card image: https://github.com/sipeed/LicheeRV-Nano-Build/releases/tag/20250804
 
-The example uses single-buffered rendering (double-buffer would be supported by the framebuffer API, however it's not supported by all drivers - especially the `fbtft` driver [does not support it](https://github.com/notro/fbtft/issues/401)).
+Enable framebuffer and configure the 2.28 inch LCD according to the **LCD** section of the instructions: https://wiki.sipeed.com/hardware/en/lichee/RV_Nano/5_peripheral.html
 
-## How to use
+## Prepare the host environment
 
-1. Open `main.rs` and make sure the `tty_path` and `fb_path` values match your system.
-2. Compile & run, with `cargo run`
+To link the program for the riscv64gc-unknown-linux-musl architecture, install riscv64-linux-musl-gcc from https://musl.cc/ . You will need the https://musl.cc/riscv64-linux-musl-cross.tgz file.
 
-Note that touch input is not implemented.
+## Compile and run the program
 
-## Why?
+cargo run --release
 
-I wanted to see how adding a custom platform implementation works (the process went very smooth, thanks to [excellent upstream documentation](https://docs.rs/slint/latest/slint/docs/mcu/index.html))
+The run-on-target.sh script will be started, uploading the executable file to the target board and running it. Make sure that this sh file contains the actual IP address of the board.
 
-## Does it work?
 
-Maybe.
 
-Below is a picture of how it looks on a 4-inch waveshare display, on the RaspberryPi. Note that this display is connected via SPI and controlled via the `fbtft` driver. It's not using the RaspberryPi's builtin graphics hardware. If you have a proper display, connected via HDMI or the built-in display connector, using a wayland compositor or X server, as well as an accelerated renderer would be the better choice imho.
+# Old README.md from https://github.com/nilclass/slint-framebuffer-example is below
 
-![](picture.jpg)
+https://github.com/nilclass/slint-framebuffer-example/blob/main/README.md
+

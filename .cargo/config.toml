@@ -1,0 +1,12 @@
+[build]
+target = "riscv64gc-unknown-linux-musl"
+
+# https://www.reddit.com/r/rust/comments/17nxdc3/help_trying_to_build_for_riscv64gcunknownlinuxmusl/
+# https://stackoverflow.com/questions/74424444/how-to-build-a-rust-program-for-riscv64gc-unknown-linux-musl
+
+[target.riscv64gc-unknown-linux-musl]
+runner = "./run-on-target.sh"
+rustflags = [
+    "-C", "target-feature=-crt-static"
+]
+linker = "riscv64-linux-musl-gcc"
