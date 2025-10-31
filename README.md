@@ -25,7 +25,7 @@ cargo run --release
 
 The run-on-target.sh script will be started, uploading the executable file to the target board and running it. Make sure that this sh file contains the actual IP address of the board.
 
-![](Screenshot-01.png)
+![](Screenshot-02.png)
 
 ![](photo-lcd.jpeg)
 
