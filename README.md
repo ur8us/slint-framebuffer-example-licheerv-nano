@@ -3,6 +3,8 @@
 
 Thiis is a demo of compiling and running a Slint UI program on a Risc-V 64-bit microprocessor under Linux, using Linux framebuffer.
 
+Pressing the USER button increments the value.
+
 ## Hardware
 
 LicheeRV Nano - https://wiki.sipeed.com/hardware/en/lichee/RV_Nano/1_intro.html
