@@ -1,7 +1,7 @@
 #!/bin/bash
 TARGET_IP=10.221.160.1
 TARGET_USER=root
-TARGET_PATH=/opt/slint-framebuffer-example
+TARGET_PATH=/opt/$(basename "$1")
 
 # Copy your public key to the host with a ssh-copy-id command, or you will have to enter password manually each time you connect
 
