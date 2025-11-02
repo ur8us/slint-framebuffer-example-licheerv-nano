@@ -1,11 +1,10 @@
 use linuxfb::{/*set_terminal_mode,*/ Framebuffer /* , TerminalMode*/};
-use slint::PhysicalPosition;
 use slint::{
     platform::{
         software_renderer::{
             MinimalSoftwareWindow, PremultipliedRgbaColor, RepaintBufferType, /*Rgb565Pixel,*/
         },
-        Platform, PointerEventButton, WindowEvent,
+        Platform,
     },
     PhysicalSize,
 };
@@ -13,7 +12,10 @@ use slint::{
 use std::rc::Rc;
 use std::time::Duration;
 
-use evdevil::{bits::BitSet, Evdev};
+use evdevil::{
+    event::{EventKind, Key, KeyState},
+    Evdev,
+};
 
 slint::include_modules!();
 
@@ -21,11 +23,12 @@ struct FramebufferPlatform {
     window: Rc<MinimalSoftwareWindow>,
     fb: Framebuffer,
     ev: Evdev,
+    ui: slint::Weak<AppWindow>,
     stride: usize,
 }
 
 impl FramebufferPlatform {
-    fn new(fb: Framebuffer, ev: Evdev) -> Self {
+    fn new(fb: Framebuffer, ev: Evdev, ui: slint::Weak<AppWindow>) -> Self {
         let size = fb.get_size();
         let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
         window.set_size(PhysicalSize::new(size.0, size.1));
@@ -33,6 +36,7 @@ impl FramebufferPlatform {
             window,
             fb,
             ev,
+            ui,
             stride: size.0 as usize,
         }
     }
@@ -46,10 +50,6 @@ impl Platform for FramebufferPlatform {
     }
 
     fn run_event_loop(&self) -> Result<(), slint::PlatformError> {
-        // println!("{:?}", self.ev);
-
-        let mut keys = BitSet::new();
-
         loop {
             slint::platform::update_timers_and_animations();
 
@@ -62,32 +62,26 @@ impl Platform for FramebufferPlatform {
             });
 
             // Handle button event, emulate button click
-            // Barely works
-            // TODO:rewrite
 
-            let new_keys = self.ev.key_state().unwrap();
-
-            if keys != new_keys {
-                keys = new_keys;
-                println!("-------------------------------");
-                println!("keys: {keys:?}");
-
-                let pos = PhysicalPosition::new(10, 500).to_logical(self.window.scale_factor());
-
-                self.window.dispatch_event(WindowEvent::PointerPressed {
-                    position: pos,
-                    button: PointerEventButton::Left,
-                });
-                self.window.dispatch_event(WindowEvent::PointerReleased {
-                    position: pos,
-                    button: PointerEventButton::Left,
-                });
+            if self.ev.is_readable().unwrap_or(false) {
+                for event in self.ev.raw_events() {
+                    if let Ok(ie) = event {
+                        if let EventKind::Key(k) = ie.kind() {
+                            if k.key() == Key::KEY_DISPLAYTOGGLE && k.state() == KeyState::PRESSED {
+                                if let Some(ui) = self.ui.upgrade() {
+                                    ui.set_counter(ui.get_counter() + 1);
+                                    println!("P");
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             if !self.window.has_active_animations() {
                 std::thread::sleep(
                     slint::platform::duration_until_next_timer_update()
-                        .unwrap_or(Duration::from_secs(1)),
+                        .unwrap_or(Duration::from_millis(1)),
                 );
             }
         }
@@ -124,9 +118,13 @@ fn main() -> Result<(), slint::PlatformError> {
     // _ = fb.set_bytes_per_pixel(2);
 
     let ev = Evdev::open("/dev/input/event0").expect("open event");
+    _ = ev.set_nonblocking(true);
+
+    let ui = AppWindow::new()?;
+    let ui_handle = ui.as_weak();
 
     // Instruct slint to use the FramebufferPlatform
-    slint::platform::set_platform(Box::new(FramebufferPlatform::new(fb, ev)))
+    slint::platform::set_platform(Box::new(FramebufferPlatform::new(fb, ev, ui_handle)))
         .expect("set platform");
 
     // Switch terminal to graphics mode
@@ -134,12 +132,12 @@ fn main() -> Result<(), slint::PlatformError> {
     // set_terminal_mode(&tty, TerminalMode::Graphics).expect("switch to graphics mode");
     // drop(tty);
 
-    let ui = AppWindow::new()?;
-
-    let ui_handle = ui.as_weak();
-    ui.on_request_increase_value(move || {
-        let ui = ui_handle.unwrap();
-        ui.set_counter(ui.get_counter() + 1);
+    ui.on_request_increase_value({
+        let ui_handle = ui.as_weak();
+        move || {
+            let ui = ui_handle.unwrap();
+            ui.set_counter(ui.get_counter() + 1);
+        }
     });
 
     ui.run()
