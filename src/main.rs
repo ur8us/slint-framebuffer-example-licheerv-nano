@@ -1,4 +1,4 @@
-use linuxfb::{/*set_terminal_mode,*/ Framebuffer /* , TerminalMode*/};
+use linuxfb::{double::Buffer, /*set_terminal_mode,*/ Framebuffer /* , TerminalMode*/};
 use slint::{
     platform::{
         software_renderer::{
@@ -17,24 +17,30 @@ use evdevil::{
     Evdev,
 };
 
+use std::cell::RefCell;
+
 slint::include_modules!();
 
 struct FramebufferPlatform {
     window: Rc<MinimalSoftwareWindow>,
-    fb: Framebuffer,
+    // fb: Framebuffer,
+    buffer: RefCell<Buffer>,
     ev: Evdev,
     ui: slint::Weak<AppWindow>,
     stride: usize,
 }
 
 impl FramebufferPlatform {
-    fn new(fb: Framebuffer, ev: Evdev, ui: slint::Weak<AppWindow>) -> Self {
-        let size = fb.get_size();
+    // fn new(fb: Framebuffer, ev: Evdev, ui: slint::Weak<AppWindow>) -> Self {
+    fn new(buffer: Buffer, ev: Evdev, ui: slint::Weak<AppWindow>) -> Self {
+        //        let size = fb.get_size();
+        let size = (buffer.width, buffer.height);
         let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
         window.set_size(PhysicalSize::new(size.0, size.1));
         Self {
             window,
-            fb,
+            // fb,
+            buffer: RefCell::new(buffer),
             ev,
             ui,
             stride: size.0 as usize,
@@ -53,12 +59,19 @@ impl Platform for FramebufferPlatform {
         loop {
             slint::platform::update_timers_and_animations();
 
+            // Draw the screen with double buffering
+
+            let mut buffer = self.buffer.borrow_mut(); // Get the mutable buffer from the RefCell (example of interior mutability)
+
             self.window.draw_if_needed(|renderer| {
-                let mut frame = self.fb.map().unwrap();
+                let frame = buffer.as_mut_slice() as &mut [u8];
+
                 let (_, pixels, _) = unsafe {
                     frame.align_to_mut::</*Rgb565Pixel*/PremultipliedRgbaColor>()
                 };
                 renderer.render(pixels, self.stride);
+
+                buffer.flip().unwrap(); // Flip the display so the new screen becomes visible
             });
 
             // Handle button event, emulate button click
@@ -70,7 +83,6 @@ impl Platform for FramebufferPlatform {
                             if k.key() == Key::KEY_DISPLAYTOGGLE && k.state() == KeyState::PRESSED {
                                 if let Some(ui) = self.ui.upgrade() {
                                     ui.set_counter(ui.get_counter() + 1);
-                                    println!("P");
                                 }
                             }
                         }
@@ -108,6 +120,7 @@ fn main() -> Result<(), slint::PlatformError> {
     // .expect("install signal handlers");
 
     let /*mut*/ fb = Framebuffer::new(fb_path).expect("open framebuffer");
+    let /*mut*/ buffer = linuxfb::double::Buffer::new(fb).unwrap();
 
     // let ly = fb.get_pixel_layout();
     // println!("ly: {:?}", ly); // returns ABGR, need RGBA
@@ -124,7 +137,8 @@ fn main() -> Result<(), slint::PlatformError> {
     let ui_handle = ui.as_weak();
 
     // Instruct slint to use the FramebufferPlatform
-    slint::platform::set_platform(Box::new(FramebufferPlatform::new(fb, ev, ui_handle)))
+    //    slint::platform::set_platform(Box::new(FramebufferPlatform::new(fb, ev, ui_handle)))
+    slint::platform::set_platform(Box::new(FramebufferPlatform::new(buffer, ev, ui_handle)))
         .expect("set platform");
 
     // Switch terminal to graphics mode

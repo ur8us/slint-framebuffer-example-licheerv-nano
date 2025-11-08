@@ -1,7 +1,7 @@
 
 # Slint framebuffer example running on LicheeRV Nano development board 
 
-Thiis is a demo of compiling and running a Slint UI program on a Risc-V 64-bit microprocessor under Linux, using Linux framebuffer.
+Thiis is a demo of compiling and running a Slint UI program on a Risc-V 64-bit microprocessor under Linux, using Linux framebuffer, **with double buffering**.
 
 Pressing the USER button increments the value.
 
