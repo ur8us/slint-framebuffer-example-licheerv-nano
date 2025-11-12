@@ -4,7 +4,7 @@ use slint::{
         software_renderer::{
             MinimalSoftwareWindow, PremultipliedRgbaColor, RepaintBufferType, /*Rgb565Pixel,*/
         },
-        Platform,
+        Platform, PointerEventButton, WindowEvent,
     },
     PhysicalSize,
 };
@@ -13,7 +13,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use evdevil::{
-    event::{EventKind, Key, KeyState},
+    event::{Abs, AbsEvent, EventKind, Key, KeyState},
     Evdev,
 };
 
@@ -25,14 +25,20 @@ struct FramebufferPlatform {
     window: Rc<MinimalSoftwareWindow>,
     // fb: Framebuffer,
     buffer: RefCell<Buffer>,
-    ev: Evdev,
+    ev_keys: Evdev,
+    ev_touch: Option<Evdev>,
     ui: slint::Weak<AppWindow>,
     stride: usize,
 }
 
 impl FramebufferPlatform {
     // fn new(fb: Framebuffer, ev: Evdev, ui: slint::Weak<AppWindow>) -> Self {
-    fn new(buffer: Buffer, ev: Evdev, ui: slint::Weak<AppWindow>) -> Self {
+    fn new(
+        buffer: Buffer,
+        ev_keys: Evdev,
+        ev_touch: Option<Evdev>,
+        ui: slint::Weak<AppWindow>,
+    ) -> Self {
         //        let size = fb.get_size();
         let size = (buffer.width, buffer.height);
         let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
@@ -41,7 +47,8 @@ impl FramebufferPlatform {
             window,
             // fb,
             buffer: RefCell::new(buffer),
-            ev,
+            ev_keys,
+            ev_touch,
             ui,
             stride: size.0 as usize,
         }
@@ -56,7 +63,15 @@ impl Platform for FramebufferPlatform {
     }
 
     fn run_event_loop(&self) -> Result<(), slint::PlatformError> {
+        // let mut last_touch = None;
+
+        let mut touch_last_x = None;
+        let mut touch_last_y = None;
+        let mut touch_just_pressed = false;
+
         loop {
+            let mut touch_event_processed = false;
+
             slint::platform::update_timers_and_animations();
 
             // Draw the screen with double buffering
@@ -76,8 +91,8 @@ impl Platform for FramebufferPlatform {
 
             // Handle button event, emulate button click
 
-            if self.ev.is_readable().unwrap_or(false) {
-                for event in self.ev.raw_events() {
+            if self.ev_keys.is_readable().unwrap_or(false) {
+                for event in self.ev_keys.raw_events() {
                     if let Ok(ie) = event {
                         if let EventKind::Key(k) = ie.kind() {
                             if k.key() == Key::KEY_DISPLAYTOGGLE && k.state() == KeyState::PRESSED {
@@ -88,6 +103,112 @@ impl Platform for FramebufferPlatform {
                         }
                     }
                 }
+            }
+
+            // Handle touch events
+
+            if let Some(evt) = &self.ev_touch {
+                if evt.is_readable().unwrap_or(false) {
+                    for event in evt.raw_events() {
+                        // let ref z = event.map_err(|_| ());
+
+                        if let Ok(ie) = event {
+                            {
+                                // println!("{:?}", ie);
+
+                                match ie.kind() {
+                                    EventKind::Abs(a) => {
+                                        match a.abs() {
+                                            Abs::MT_POSITION_X => {
+                                                touch_last_x = Some(a.value());
+                                            }
+
+                                            Abs::MT_POSITION_Y => {
+                                                touch_last_y = Some(a.value());
+                                            }
+
+                                            _ => (),
+                                        }
+
+                                        if touch_last_x.is_some() && touch_last_y.is_some() {
+                                            let position = slint::PhysicalPosition::new(
+                                                touch_last_x.unwrap(),
+                                                touch_last_y.unwrap(),
+                                            )
+                                            .to_logical(self.window.scale_factor());
+
+                                            // self.window.dispatch_event(WindowEvent::PointerMoved {
+                                            //     position,
+                                            // });
+
+                                            if touch_just_pressed {
+                                                self.window.dispatch_event(
+                                                    WindowEvent::PointerPressed {
+                                                        position,
+                                                        button: PointerEventButton::Left,
+                                                    },
+                                                );
+                                                touch_just_pressed = false;
+                                            }
+
+                                            touch_event_processed = true;
+                                        }
+                                    }
+
+                                    EventKind::Key(k) => {
+                                        if k.key() == Key::BTN_TOUCH {
+                                            match k.state() {
+                                                KeyState::PRESSED => {
+                                                    touch_just_pressed = true;
+                                                }
+
+                                                KeyState::RELEASED => {
+                                                    if touch_last_x.is_some()
+                                                        && touch_last_y.is_some()
+                                                    {
+                                                        let position =
+                                                            slint::PhysicalPosition::new(
+                                                                touch_last_x.unwrap(),
+                                                                touch_last_y.unwrap(),
+                                                            )
+                                                            .to_logical(self.window.scale_factor());
+
+                                                        self.window.dispatch_event(
+                                                            WindowEvent::PointerReleased {
+                                                                position,
+                                                                button: PointerEventButton::Left,
+                                                            },
+                                                        );
+
+                                                        touch_event_processed = true;
+                                                    }
+
+                                                    self.window
+                                                        .dispatch_event(WindowEvent::PointerExited);
+
+                                                    touch_last_x = None;
+                                                    touch_last_y = None;
+                                                    touch_just_pressed = false;
+                                                }
+
+                                                _ => {}
+                                            }
+                                        }
+                                    }
+
+                                    _ => {}
+                                }
+                                // }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // if let z  = self.ev_touch;
+
+            if touch_event_processed {
+                continue;
             }
 
             if !self.window.has_active_animations() {
@@ -130,16 +251,24 @@ fn main() -> Result<(), slint::PlatformError> {
 
     // _ = fb.set_bytes_per_pixel(2);
 
-    let ev = Evdev::open("/dev/input/event0").expect("open event");
-    _ = ev.set_nonblocking(true);
+    let ev_keys = Evdev::open("/dev/input/event0").expect("open event"); // Keys are always present
+    _ = ev_keys.set_nonblocking(true);
+
+    let mut ev_touch = None; // Touch panel may be absent
+    if let Ok(evt) = Evdev::open("/dev/input/event1") {
+        _ = evt.set_nonblocking(true);
+        ev_touch = Some(evt); // Touch panel is present
+    }
 
     let ui = AppWindow::new()?;
     let ui_handle = ui.as_weak();
 
     // Instruct slint to use the FramebufferPlatform
     //    slint::platform::set_platform(Box::new(FramebufferPlatform::new(fb, ev, ui_handle)))
-    slint::platform::set_platform(Box::new(FramebufferPlatform::new(buffer, ev, ui_handle)))
-        .expect("set platform");
+    slint::platform::set_platform(Box::new(FramebufferPlatform::new(
+        buffer, ev_keys, ev_touch, ui_handle,
+    )))
+    .expect("set platform");
 
     // Switch terminal to graphics mode
     // let tty = std::fs::File::open(tty_path).expect("open TTY");
@@ -151,6 +280,7 @@ fn main() -> Result<(), slint::PlatformError> {
         move || {
             let ui = ui_handle.unwrap();
             ui.set_counter(ui.get_counter() + 1);
+            print!("+1");
         }
     });
 
