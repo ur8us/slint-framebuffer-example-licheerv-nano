@@ -11,6 +11,8 @@ LicheeRV Nano - https://wiki.sipeed.com/hardware/en/lichee/RV_Nano/1_intro.html
 
 IPS 2.28 inch 31-pin ST7701S-based display, resolution is 368*552
 
+(For the large ILI9881C-based display, use sample-dsi to set the DSI mode.)
+
 ## Prepare the target
 
 Flash the SD card image: https://github.com/sipeed/LicheeRV-Nano-Build/releases/tag/20250804
@@ -29,7 +31,15 @@ The run-on-target.sh script will be started, uploading the executable file to th
 
 ![](Screenshot-02.png)
 
+
+Small LCD, 368*552:
+
 ![](photo-lcd.jpeg)
+
+
+Large display, 720*1280
+
+![](photo-lcd-large.jpeg)
 
 
 # Old README.md from https://github.com/nilclass/slint-framebuffer-example is below
