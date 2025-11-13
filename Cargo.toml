@@ -9,7 +9,7 @@ build = "build.rs"
 
 [dependencies]
 ctrlc = { version = "3.4.1", features = ["termination"] }
-linuxfb = { git = "https://gitlab.com/nilclass/rust-linuxfb", branch = "kdsetmode" }
+linuxfb = { path = "./rust-linuxfb" }
 evdevil = "0.3.3"
 
 [dependencies.slint]

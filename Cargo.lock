@@ -1260,8 +1260,7 @@ checksum = "1a9bad9f94746442c783ca431b22403b519cd7fbeed0533fdd6328b2f2212128"
 
 [[package]]
 name = "linuxfb"
-version = "0.2.1"
-source = "git+https://gitlab.com/nilclass/rust-linuxfb?branch=kdsetmode#1538f33aaa0fc79ffc5a5dc7e522b8772bf734a0"
+version = "0.3.1"
 dependencies = [
  "bindgen",
  "libc",
