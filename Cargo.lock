@@ -1261,7 +1261,7 @@ checksum = "1a9bad9f94746442c783ca431b22403b519cd7fbeed0533fdd6328b2f2212128"
 [[package]]
 name = "linuxfb"
 version = "0.3.1"
-source = "git+https://gitlab.com/ur8us/rust-linuxfb.git?rev=cf837acf#cf837acfb115e12dd704b3cba534f6ac13fee100"
+source = "git+https://gitlab.com/ur8us/rust-linuxfb.git?rev=447f1bba#447f1bba2a47a35142ab1222228675ee692007b3"
 dependencies = [
  "bindgen",
  "libc",

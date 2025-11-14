@@ -137,9 +137,9 @@ impl Platform for FramebufferPlatform {
                                             )
                                             .to_logical(self.window.scale_factor());
 
-                                            // self.window.dispatch_event(WindowEvent::PointerMoved {
-                                            //     position,
-                                            // });
+                                            self.window.dispatch_event(WindowEvent::PointerMoved {
+                                                position,
+                                            });
 
                                             if touch_just_pressed {
                                                 self.window.dispatch_event(

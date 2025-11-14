@@ -1,6 +1,6 @@
 #!/bin/bash
-TARGET_IP=10.221.160.1
-# TARGET_IP=10.100.85.1
+# TARGET_IP=10.221.160.1
+TARGET_IP=10.100.85.1
 TARGET_USER=root
 TARGET_PATH=/opt/$(basename "$1")
 
@@ -18,4 +18,4 @@ ssh ${TARGET_USER}@${TARGET_IP} rm ${TARGET_PATH}
 scp $1  ${TARGET_USER}@${TARGET_IP}:${TARGET_PATH}
 
 # Run it remotely
-ssh ${TARGET_USER}@${TARGET_IP} ${TARGET_PATH}
+ssh ${TARGET_USER}@${TARGET_IP} "killall $(basename "$1") ; ${TARGET_PATH}"
