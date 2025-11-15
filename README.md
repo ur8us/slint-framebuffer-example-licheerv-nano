@@ -27,6 +27,13 @@ To link the program for the riscv64gc-unknown-linux-musl architecture, install r
 
 ## Compile and run the program
 
+Cargo.toml file features:
+
+use_double_buffering - enables double buffering
+color_32bit - enable 32-bit color (16-bit color otherwise)
+
+**Run**
+
 cargo run --release
 
 The run-on-target.sh script will be started, uploading the executable file to the target board and running it. Make sure that this sh file contains the actual IP address of the board.

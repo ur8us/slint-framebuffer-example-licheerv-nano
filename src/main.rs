@@ -2,7 +2,7 @@ use linuxfb::{double::Buffer, /*set_terminal_mode,*/ Framebuffer /* , TerminalMo
 use slint::{
     platform::{
         software_renderer::{
-            MinimalSoftwareWindow, PremultipliedRgbaColor, RepaintBufferType, /*Rgb565Pixel,*/
+            MinimalSoftwareWindow, PremultipliedRgbaColor, RepaintBufferType, Rgb565Pixel,
         },
         Platform, PointerEventButton, WindowEvent,
     },
@@ -19,12 +19,22 @@ use evdevil::{
 
 use std::cell::RefCell;
 
+#[cfg(feature = "use_double_buffering")]
+type BufferType = Buffer;
+#[cfg(not(feature = "use_double_buffering"))]
+type BufferType = Framebuffer;
+
+#[cfg(feature = "color_32bit")]
+type ColorType = PremultipliedRgbaColor;
+#[cfg(not(feature = "color_32bit"))]
+type ColorType = Rgb565Pixel;
+
 slint::include_modules!();
 
 struct FramebufferPlatform {
     window: Rc<MinimalSoftwareWindow>,
     // fb: Framebuffer,
-    buffer: RefCell<Buffer>,
+    buffer: RefCell<BufferType>,
     ev_keys: Evdev,
     ev_touch: Option<Evdev>,
     ui: slint::Weak<AppWindow>,
@@ -34,18 +44,21 @@ struct FramebufferPlatform {
 impl FramebufferPlatform {
     // fn new(fb: Framebuffer, ev: Evdev, ui: slint::Weak<AppWindow>) -> Self {
     fn new(
-        buffer: Buffer,
+        buffer: BufferType,
         ev_keys: Evdev,
         ev_touch: Option<Evdev>,
         ui: slint::Weak<AppWindow>,
     ) -> Self {
-        //        let size = fb.get_size();
+        #[cfg(feature = "use_double_buffering")]
         let size = (buffer.width, buffer.height);
+
+        #[cfg(not(feature = "use_double_buffering"))]
+        let size = buffer.get_size();
+
         let window = MinimalSoftwareWindow::new(RepaintBufferType::ReusedBuffer);
         window.set_size(PhysicalSize::new(size.0, size.1));
         Self {
             window,
-            // fb,
             buffer: RefCell::new(buffer),
             ev_keys,
             ev_touch,
@@ -63,8 +76,6 @@ impl Platform for FramebufferPlatform {
     }
 
     fn run_event_loop(&self) -> Result<(), slint::PlatformError> {
-        // let mut last_touch = None;
-
         let mut touch_last_x = None;
         let mut touch_last_y = None;
         let mut touch_just_pressed = false;
@@ -76,16 +87,20 @@ impl Platform for FramebufferPlatform {
 
             // Draw the screen with double buffering
 
+            // #[cfg(feature = "use_double_buffering")]
             let mut buffer = self.buffer.borrow_mut(); // Get the mutable buffer from the RefCell (example of interior mutability)
 
             self.window.draw_if_needed(|renderer| {
-                let frame = buffer.as_mut_slice() as &mut [u8];
+                #[cfg(feature = "use_double_buffering")]
+                let frame = buffer.as_mut_slice();
 
-                let (_, pixels, _) = unsafe {
-                    frame.align_to_mut::</*Rgb565Pixel*/PremultipliedRgbaColor>()
-                };
+                #[cfg(not(feature = "use_double_buffering"))]
+                let mut frame = buffer.map().unwrap();
+
+                let (_, pixels, _) = unsafe { frame.align_to_mut::<ColorType>() };
                 renderer.render(pixels, self.stride);
 
+                #[cfg(feature = "use_double_buffering")]
                 buffer.flip().unwrap(); // Flip the display so the new screen becomes visible
             });
 
@@ -240,8 +255,10 @@ fn main() -> Result<(), slint::PlatformError> {
     // })
     // .expect("install signal handlers");
 
-    let /*mut*/ fb = Framebuffer::new(fb_path).expect("open framebuffer");
-    let /*mut*/ buffer = linuxfb::double::Buffer::new(fb).unwrap();
+    let /*mut*/ buffer = Framebuffer::new(fb_path).expect("open framebuffer");
+
+    #[cfg(feature = "use_double_buffering")]
+    let /*mut*/ buffer = linuxfb::double::Buffer::new(buffer).unwrap();
 
     // let ly = fb.get_pixel_layout();
     // println!("ly: {:?}", ly); // returns ABGR, need RGBA

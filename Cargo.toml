@@ -19,3 +19,12 @@ features = ["compat-1-2", "std", "software-renderer-systemfonts"]
 
 [build-dependencies]
 slint-build = "1.0"
+
+[features]
+use_double_buffering = []
+color_32bit =[]
+default = ["use_double_buffering", "color_32bit"]
+
+
+
+
