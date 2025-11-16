@@ -7,6 +7,9 @@ Pressing the USER button (/dev/input/event0) increments the value.
 
 Touch screen (/dev/input/event1) is also supported.
 
+TODO: Better double buffer handling
+TODO: Use last version of the Slint labrary
+
 ## Hardware
 
 LicheeRV Nano - https://wiki.sipeed.com/hardware/en/lichee/RV_Nano/1_intro.html
@@ -30,6 +33,7 @@ To link the program for the riscv64gc-unknown-linux-musl architecture, install r
 Cargo.toml file features:
 
 use_double_buffering - enables double buffering
+
 color_32bit - enable 32-bit color (16-bit color otherwise)
 
 **Run**
