@@ -8,7 +8,6 @@ Pressing the USER button (/dev/input/event0) increments the value.
 Touch screen (/dev/input/event1) is also supported.
 
 TODO: Better double buffer handling
-TODO: Use last version of the Slint labrary
 
 ## Hardware
 
