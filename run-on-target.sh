@@ -1,6 +1,6 @@
 #!/bin/bash
-TARGET_IP=10.221.160.1
-# TARGET_IP=10.100.85.1
+# TARGET_IP=10.221.160.1
+TARGET_IP=10.100.85.1
 TARGET_USER=root
 TARGET_PATH=/opt/$(basename "$1")
 

@@ -97,10 +97,13 @@ impl Platform for FramebufferPlatform {
                 #[cfg(feature = "use_double_buffering")]
                 let frame = buffer.as_mut_slice();
 
+                // println!("{:#?}", frame.as_mut_ptr());
+
                 #[cfg(not(feature = "use_double_buffering"))]
                 let mut frame = buffer.map().unwrap();
 
                 let (_, pixels, _) = unsafe { frame.align_to_mut::<ColorType>() };
+                // println!("{:?}", pixels);
                 renderer.render(pixels, self.stride);
 
                 #[cfg(feature = "use_double_buffering")]
@@ -310,7 +313,7 @@ fn main() -> Result<(), slint::PlatformError> {
         move || {
             let ui = ui_handle.unwrap();
             ui.set_counter(ui.get_counter() + 1);
-            print!("+1");
+            // print!("+1");
         }
     });
 
