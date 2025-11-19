@@ -14,11 +14,13 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use evdevil::{
-    event::{Abs, AbsEvent, EventKind, Key, KeyState},
+    event::{Abs, EventKind, Key, KeyState},
     Evdev,
 };
 
 use std::cell::RefCell;
+
+use std::sync::OnceLock;
 
 #[cfg(feature = "use_double_buffering")]
 type BufferType = Buffer;
@@ -32,24 +34,18 @@ type ColorType = Rgb565Pixel;
 
 slint::include_modules!();
 
+static UI_HANDLE: OnceLock<slint::Weak<AppWindow>> = OnceLock::new();
+
 struct FramebufferPlatform {
     window: Rc<MinimalSoftwareWindow>,
-    // fb: Framebuffer,
     buffer: RefCell<BufferType>,
     ev_keys: Evdev,
     ev_touch: Option<Evdev>,
-    ui: RefCell<slint::Weak<AppWindow>>,
     stride: usize,
 }
 
 impl FramebufferPlatform {
-    // fn new(fb: Framebuffer, ev: Evdev, ui: slint::Weak<AppWindow>) -> Self {
-    fn new(
-        buffer: BufferType,
-        ev_keys: Evdev,
-        ev_touch: Option<Evdev>,
-        // ui: slint::Weak<AppWindow>,
-    ) -> Self {
+    fn new(buffer: BufferType, ev_keys: Evdev, ev_touch: Option<Evdev>) -> Self {
         #[cfg(feature = "use_double_buffering")]
         let size = (buffer.width, buffer.height);
 
@@ -63,7 +59,6 @@ impl FramebufferPlatform {
             buffer: RefCell::new(buffer),
             ev_keys,
             ev_touch,
-            ui: RefCell::new(slint::Weak::default()),
             stride: size.0 as usize,
         }
     }
@@ -117,7 +112,7 @@ impl Platform for FramebufferPlatform {
                     if let Ok(ie) = event {
                         if let EventKind::Key(k) = ie.kind() {
                             if k.key() == Key::KEY_DISPLAYTOGGLE && k.state() == KeyState::PRESSED {
-                                if let Some(ui) = self.ui.borrow().upgrade() {
+                                if let Some(ui) = UI_HANDLE.get().and_then(|w| w.upgrade()) {
                                     ui.set_counter(ui.get_counter() + 1);
                                 }
                             }
@@ -226,8 +221,6 @@ impl Platform for FramebufferPlatform {
                 }
             }
 
-            // if let z  = self.ev_touch;
-
             if touch_event_processed {
                 continue;
             }
@@ -283,25 +276,12 @@ fn main() -> Result<(), slint::PlatformError> {
         ev_touch = Some(evt); // Touch panel is present
     }
 
-    // Instruct slint to use the FramebufferPlatform
-    //    slint::platform::set_platform(Box::new(FramebufferPlatform::new(fb, ev, ui_handle)))
-
+    // Instruct slint to use the FramebufferPlatform``
     let platform = Box::new(FramebufferPlatform::new(buffer, ev_keys, ev_touch));
-    let platform_ref: *const FramebufferPlatform = &*platform;
-
     slint::platform::set_platform(platform).expect("set platform");
 
     let ui = AppWindow::new()?;
-    let ui_handle = ui.as_weak();
-
-    // platform.ui.replace(ui_handle);
-
-    // TODO: replace with safe equivalent
-    unsafe {
-        (*(platform_ref as *const FramebufferPlatform))
-            .ui
-            .replace(ui_handle);
-    }
+    let _ = UI_HANDLE.set(ui.as_weak());
 
     // Switch terminal to graphics mode
     // let tty = std::fs::File::open(tty_path).expect("open TTY");
